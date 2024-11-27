@@ -30,6 +30,7 @@ class SearchEngine(object):
 		debug = False
 	):
 		# File and directory attributes
+		self.debug = debug
 		self.index_dir = index_dir
 		self.page_rank_file = page_rank_file
 		self.url_map_file = url_map_file
@@ -56,7 +57,6 @@ class SearchEngine(object):
 		    "words": {"filepath": titles_json, "compress": True}
 	    }
 		self.autocomplete = autocomplete_factory(content_files=content_files)
-		self.debug = debug
 
 	# Returns an existing or new indexer 
 	def __get_indexer(self):
@@ -83,11 +83,11 @@ class SearchEngine(object):
 		for u in urls:
 			file_name = urls[u]
 			# Get the title for the file name
-			with open(self.docs_raw_dir+file_name, "r") as html:
+			with open(self.docs_raw_dir+file_name, "r", encoding="utf-8") as html:
 				_title = BeautifulSoup(html.read(), "lxml").title.string.strip()
 				_title = re.sub(r"(\s*-\s*myanimelist\.net\s*)$", "", _title.lower())
 			# Get the text content for the file name
-			with open(self.docs_cleaned_dir+file_name, "r") as text:
+			with open(self.docs_cleaned_dir+file_name, "r", encoding="utf-8") as text:
 				_content = text.read()
 
 			if self.debug: print(f"({count}) Indexing {_title}")
