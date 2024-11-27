@@ -54,8 +54,8 @@ class SearchEngine(object):
 
 		content_files = {
 			"synonyms": {"filepath": synonyms_json, "compress": False},
-		    "words": {"filepath": titles_json, "compress": True}
-	    }
+			"words": {"filepath": titles_json, "compress": True}
+		}
 		self.autocomplete = autocomplete_factory(content_files=content_files)
 
 	# Returns an existing or new indexer 
@@ -228,11 +228,11 @@ def demo(search_engine):
 		if pressed == '\x03': break # \x03 is ctrl+c
 		# Backspace character is pressed
 		elif pressed == '\x7f':
-		    if word_list:
-		    	cursor_index -= 1
-		    	char = word_list.pop()
-		    	# Update the start_of_words if a word is deleted
-		    	if (word_list and word_list[-1] == ' ' and char != ' '): start_of_words.pop()
+			if word_list:
+				cursor_index -= 1
+				char = word_list.pop()
+				# Update the start_of_words if a word is deleted
+				if (word_list and word_list[-1] == ' ' and char != ' '): start_of_words.pop()
 		# Tab character is pressed, use auto-complete
 		elif pressed == '\x09':
 			# Create a list of indices to update start_of_words if the result has space characters
