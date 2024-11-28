@@ -51,6 +51,7 @@ class SearchEngine(object):
 		self.current_result = None
 		self.current_query = None
 		self.current_page = 1
+		self.scoring_type = "both"
 
 		content_files = {
 			"synonyms": {"filepath": synonyms_json, "compress": False},
@@ -97,13 +98,19 @@ class SearchEngine(object):
 		writer.commit()
 		return ix
 
+	def change_scoring_type(self, type):
+		allowed_types = ["both", "bm25", "pagerank"]
+		if type in allowed_types: self.scoring_type = type
+
 	# Combines page rank and bm25 to be used with whoosh.scoring.FunctionWeighting
 	def __custom_scorer(self, searcher, fieldname, text, matcher):
 		url = self.document_list[matcher.id()]["url"]
 		pr = self.page_rank[url]
 		bm25 = scoring.BM25F().scorer(searcher, fieldname, text).score(matcher)
-		a = 100000 # Most PageRank is 1E-6 place
-		b = 1.5
+		a = 0
+		b = 0
+		if self.scoring_type == "both" or self.scoring_type == "pagerank": a = 100000 # Most PageRank is 1E-6 place
+		if self.scoring_type == "both" or self.scoring_type == "bm25": b = 1.5
 		return a*pr + b*bm25
 
 	# Updates current_query and current_result for a given string and upgrade option
@@ -215,6 +222,7 @@ class SearchEngine(object):
 # Terminal demo modified from fast_autocomplete.demo
 def demo(search_engine):
 	search_engine.change_search_mode("title")
+	search_engine.change_scoring_type("both")
 	word_list = []
 	start_of_words = [0]
 	cursor_index = 0
