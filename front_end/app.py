@@ -29,7 +29,7 @@ def search():
     
     if r:
         # change rank
-        pass
+        mySearchEngine.change_scoring_type(r)
     
     if not q and last_q:
         q = last_q
