@@ -21,8 +21,20 @@ def index():
 # Inspired by Pretty Printed on YouTube: https://youtu.be/PWEl1ysbPAY?si=eKrzQqsts-G-TvkK
 @app.route('/search')
 def search():
-    q = request.args.get('q')
+    global last_q
+    q = request.args.get('q') # query
+    r = request.args.get('r') # rank
     print(q)
+    print(r)
+    
+    if r:
+        # change rank
+        pass
+    
+    if not q and last_q:
+        q = last_q
+    else:
+        last_q = q
     
     results = []
     
@@ -35,6 +47,8 @@ def search():
     
 def start_app():
     global mySearchEngine
+    global last_q
+    last_q = None
     dir = 'search_engine'
     mySearchEngine = SearchEngine(
         index_dir=f'../{dir}/indexdir/'
