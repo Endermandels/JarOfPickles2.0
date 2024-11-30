@@ -13,6 +13,7 @@ sys.path.insert(0, parentdir)
 
 from flask import Flask, render_template, request, redirect, jsonify
 from search_engine.anime_search_engine import SearchEngine
+import pickle
 
 
 app = Flask(__name__)
@@ -62,15 +63,15 @@ def search():
             if results:
                 results = results['docs']
                 for result in results:
-                    result['url'] = 'check_url?u=' + result['url']
-                return render_template("search_results.html", results=results)    
+                    result['filtered_url'] = 'check_url?u=' + result['url']
+                return render_template("search_results.html", results=results, url_to_image=images_dict)    
         elif page == 'prev':
             results = mySearchEngine.get_prev_page()
             if results:
                 results = results['docs']
                 for result in results:
-                    result['url'] = 'check_url?u=' + result['url']
-                return render_template("search_results.html", results=results)    
+                    result['filtered_url'] = 'check_url?u=' + result['url']
+                return render_template("search_results.html", results=results, url_to_image=images_dict)    
         else:
             print("invalid page request")
     
@@ -85,9 +86,11 @@ def search():
         mySearchEngine.submit_query(q, upgrade=True)
         results = mySearchEngine.return_page(1)['docs']
         for result in results:
-            result['url'] = 'check_url?u=' + result['url']
+            result['filtered_url'] = 'check_url?u=' + result['url']
        
-    return render_template("search_results.html", results=results)
+    return render_template("search_results.html"
+                           , results=results
+                           , url_to_image=images_dict)
 
 @app.route('/check_url')
 def check_url():
@@ -97,11 +100,22 @@ def check_url():
         return render_template('error.html', status=status, description=responses[status])
     return redirect(url) 
 
+def unpickle(fn):
+    try:
+        with open(fn, 'rb') as file:
+            data = pickle.load(file)
+        return data
+    except Exception as e:
+        print(f"Error unpickling {fn}: {e}")
+        sys.exit(1)
+
 def start_app():
     global mySearchEngine
     global last_q
+    global images_dict
     last_q = None
     dir = 'search_engine'
+    images_dict = unpickle(f'../{dir}/startup_files/image_dict.dat')
     mySearchEngine = SearchEngine(
         debug=True
         , index_dir=f'../{dir}/indexdir'
