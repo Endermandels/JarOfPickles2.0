@@ -100,6 +100,9 @@ class SearchEngine(object):
 	def change_scoring_type(self, type):
 		allowed_types = ["both", "bm25", "pagerank"]
 		if type in allowed_types: self.scoring_type = type
+	
+	def get_scoring_type(self):
+		return self.scoring_type
 
 	# Combines page rank and bm25 to be used with whoosh.scoring.FunctionWeighting
 	def __custom_scorer(self, searcher, fieldname, text, matcher):
