@@ -19,6 +19,8 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
+    global last_q
+    last_q = None
     return render_template('index.html')
 
 def link_status(url):
@@ -32,14 +34,36 @@ def link_status(url):
 @app.route('/search')
 def search():
     global last_q
+    page = request.args.get('page') # pagination
     q = request.args.get('q') # query
     r = request.args.get('r') # rank
+    print(page)
     print(q)
     print(r)
+    
+        
     
     if r:
         # change rank
         mySearchEngine.change_scoring_type(r)
+        
+    if page and last_q:
+        if page == 'next':
+            results = mySearchEngine.get_next_page()
+            if results:
+                results = results['docs']
+                for result in results:
+                    result['url'] = 'check_url?u=' + result['url']
+                return render_template("search_results.html", results=results)    
+        elif page == 'prev':
+            results = mySearchEngine.get_prev_page()
+            if results:
+                results = results['docs']
+                for result in results:
+                    result['url'] = 'check_url?u=' + result['url']
+                return render_template("search_results.html", results=results)    
+        else:
+            print("invalid page request")
     
     if not q and last_q:
         q = last_q
