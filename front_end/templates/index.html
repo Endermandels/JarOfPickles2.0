@@ -61,6 +61,10 @@
                 }
             });
         });
+
+        window.onload = function() {
+            document.getElementById('search-bar').value = '';
+        }
     </script>
 </head>
 <body>
@@ -109,6 +113,23 @@
                 <!-- Results will be injected here -->
             </tbody>
         </table>
+
+        <!-- Pagination Buttons -->
+        <div class="pagination-buttons">
+            <button 
+                hx-get="/search?page=prev" 
+                hx-target="#results"
+                hx-trigger="click">
+                &lt; Prev
+            </button>
+            <button 
+                hx-get="/search?page=next" 
+                hx-target="#results"
+                hx-trigger="click">
+                Next &gt;
+            </button>
+        </div>
+
     </div>
 </body>
 </html>
