@@ -1,7 +1,7 @@
 from whoosh.index import create_in, open_dir, exists_in
 from whoosh.fields import *
 from whoosh.analysis import StemmingAnalyzer, SimpleAnalyzer
-from whoosh.qparser import QueryParser, MultifieldParser
+from whoosh.qparser import QueryParser
 from whoosh.searching import ResultsPage
 from whoosh import scoring
 
