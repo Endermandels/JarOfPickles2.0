@@ -1,7 +1,7 @@
 from whoosh.index import create_in, open_dir, exists_in
 from whoosh.fields import *
 from whoosh.analysis import StemmingAnalyzer, SimpleAnalyzer
-from whoosh.qparser import QueryParser
+from whoosh.qparser import QueryParser, MultifieldParser
 from whoosh.searching import ResultsPage
 from whoosh import scoring
 
@@ -150,13 +150,22 @@ class SearchEngine(object):
 	# upgrade the Fast Autocomplete result.
 	def get_result(self, query_string, upgrade=False):
 		query_obj = QueryParser(self.search_mode, self.ix.schema).parse(query_string)
+		query_obj2 = QueryParser("content", self.ix.schema).parse(query_string)
+
+		# query_obj = MultifieldParser(["title","content"], self.ix.schema).parse(query_string)
+
 		query_result = self.searcher.search(query_obj, limit=None)
+		query_result2 = self.searcher.search(query_obj2, limit=None)
 		if not upgrade: return query_result
 
 		suggested_query = self.get_suggested_query(query_string, 0, whole_string=True)
 		suggested_query_obj = QueryParser(self.search_mode, self.ix.schema).parse(suggested_query)
+
+		print(suggested_query_obj)
+
 		suggested_result = self.searcher.search(suggested_query_obj, limit=None)
 		suggested_result.upgrade(query_result)
+		suggested_result.extend(query_result2)
 		return suggested_result
 
 	# Returns a dictionary representation of a page result
