@@ -1,9 +1,11 @@
 {% for result in results %}
 <tr>
     <td>
-        <img src="{{ url_to_image[result['url']] }}" 
-             alt="Image for {{ result['url'] }}" 
-             style="max-width: 100px; max-height: 100px;">
+        <a href="{{ result['filtered_url'] }}" target="_blank">
+            <img src="{{ url_to_image[result['url']] }}" 
+                alt="Image for {{ result['url'] }}" 
+                style="max-width: 100px; max-height: 100px;">
+        </a>
     </td>
     <td>
         <a href="{{ result['filtered_url'] }}" target="_blank">{{ result['title'] }}</a>
