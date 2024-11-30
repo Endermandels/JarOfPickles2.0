@@ -9,7 +9,9 @@ from bs4 import BeautifulSoup
 from fast_autocomplete import AutoComplete, autocomplete_factory
 from fast_autocomplete.misc import *
 
-import os, pickle, re
+from gensim.models import Word2Vec
+
+import os, pickle, re, string
 
 # This function is needed because the scoring.FunctionWeighting.FunctionScorer
 # needs a max_quality function.
@@ -27,6 +29,7 @@ class SearchEngine(object):
 		page_rank_file = "./startup_files/page_rank.dat", 
 		titles_json = "./startup_files/titles.json", 
 		synonyms_json="./startup_files/synonyms.json", 
+		word_2_vec_model = "./startup_files/word2vec.model",
 		debug = False
 	):
 		# File and directory attributes
@@ -49,9 +52,11 @@ class SearchEngine(object):
 		self.search_mode = "title"
 		self.document_list = list(self.searcher.documents())
 		self.current_result = None
+		self.relevant_results = None
 		self.current_query = None
 		self.current_page = 1
 		self.scoring_type = "both"
+		self.word_2_vec_model = Word2Vec.load(word_2_vec_model)
 
 		content_files = {
 			"synonyms": {"filepath": synonyms_json, "compress": False},
@@ -218,6 +223,47 @@ class SearchEngine(object):
 	def close_searcher(self):
 		self.searcher.close()
 
+	def get_relevant_results(self, k=3, num_results=10):
+		count = 0
+		results = self.return_page(1)["docs"]
+		model = self.word_2_vec_model.wv
+
+		if self.debug: print(f"Results {results}")
+		for result in results:
+			if count == k: return
+			if self.debug: print(f"Result: {result}")
+			terms = result["title"].translate(str.maketrans(
+				'', '', string.punctuation))
+			terms = terms.split()
+			if self.debug: print(f"Terms: {terms}")
+			related_terms = []
+			for term in terms:
+				similar_terms = model.most_similar(term)
+				similar_terms.insert(0, (term, 1))
+				related_terms.append(similar_terms)
+			print(related_terms)
+			exit()
+			count += 1
+
+		# Hard-coded to only take the first term
+		# sims = model.wv.most_similar(terms[0][1])
+		# i = 0
+		# query = QueryParser("content", self.ix.schema, group=AndGroup).parse(sims[0][0])
+		# print(f"Searching for {query}")
+		# all_relevant_results = self.searcher.search(query)
+		# for sim in sims[1:]:
+		# 	query = QueryParser("content", self.ix.schema, group=AndGroup).parse(sim[0])
+		# 	print(f"Searching for {query}")
+		# 	relevant_results = self.searcher.search(query)
+		# 	all_relevant_results.upgrade_and_extend(relevant_results)
+		# 	i += 1
+		# 	if i > k: break
+		# i = 0
+		# for result in all_relevant_results: 
+		# 	print(f'{result["title"]}\n\t\033[94m{result["url"]}\033[0m\n')
+		# 	i += 1
+		# 	if i >= num_results: return
+
 
 # Terminal demo modified from fast_autocomplete.demo
 def demo(search_engine):
@@ -286,18 +332,20 @@ def demo(search_engine):
 
 
 def main():
-	string = "fairy tail manga"
+	# string = "fairy tail manga"
+	string = "fantasy"
 	print("initializing search engine...")
 	mySearchEngine = SearchEngine(
 		debug=True,
 		url_map_file="./new_sample/url_map.dat",
 		docs_raw_dir ="./new_sample/_docs_raw/",
 		docs_cleaned_dir="./new_sample/_docs_cleaned/")
-	# mySearchEngine.submit_query(string, upgrade=True)
+	mySearchEngine.submit_query(string, upgrade=True)
+	mySearchEngine.get_relevant_results()
 	# mySearchEngine.get_first_page()
-	print("starting demo...")
-	demo(mySearchEngine)
-	mySearchEngine.close_searcher()
+	# print("starting demo...")
+	# demo(mySearchEngine)
+	# mySearchEngine.close_searcher()
 
 if __name__ == "__main__":
 	main()
