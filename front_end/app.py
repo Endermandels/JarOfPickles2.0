@@ -11,8 +11,9 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir) 
 
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, jsonify
 from search_engine.anime_search_engine import SearchEngine
+import pickle
 
 
 app = Flask(__name__)
@@ -21,6 +22,7 @@ app = Flask(__name__)
 def index():
     global last_q
     last_q = None
+    mySearchEngine.change_scoring_type('both')
     return render_template('index.html')
 
 def link_status(url):
@@ -29,23 +31,31 @@ def link_status(url):
         return response.status_code
     except requests.RequestException:
         return 400
+    
+@app.route('/update-checkboxes', methods=['POST'])
+def update_checkboxes():
+    # Retrieve checkbox data from the JSON body
+    data = request.json
+    checked_boxes = data.get('checked', [])
 
-# Inspired by Pretty Printed on YouTube: https://youtu.be/PWEl1ysbPAY?si=eKrzQqsts-G-TvkK
+    if len(checked_boxes) == 2:
+        mySearchEngine.change_scoring_type('both')
+    elif len(checked_boxes) == 1:
+        mySearchEngine.change_scoring_type(checked_boxes[0])
+
+    print(f"Checked checkboxes: {checked_boxes}")
+
+    # Return a response (optional)
+    return jsonify({"message": "Checkbox states updated", "checked": checked_boxes})
+
+
 @app.route('/search')
 def search():
     global last_q
     page = request.args.get('page') # pagination
     q = request.args.get('q') # query
-    r = request.args.get('r') # rank
     print(page)
     print(q)
-    print(r)
-    
-        
-    
-    if r:
-        # change rank
-        mySearchEngine.change_scoring_type(r)
         
     if page and last_q:
         if page == 'next':
@@ -53,15 +63,15 @@ def search():
             if results:
                 results = results['docs']
                 for result in results:
-                    result['url'] = 'check_url?u=' + result['url']
-                return render_template("search_results.html", results=results)    
+                    result['filtered_url'] = 'check_url?u=' + result['url']
+                return render_template("search_results.html", results=results, url_to_image=images_dict)    
         elif page == 'prev':
             results = mySearchEngine.get_prev_page()
             if results:
                 results = results['docs']
                 for result in results:
-                    result['url'] = 'check_url?u=' + result['url']
-                return render_template("search_results.html", results=results)    
+                    result['filtered_url'] = 'check_url?u=' + result['url']
+                return render_template("search_results.html", results=results, url_to_image=images_dict)    
         else:
             print("invalid page request")
     
@@ -76,9 +86,11 @@ def search():
         mySearchEngine.submit_query(q, upgrade=True)
         results = mySearchEngine.return_page(1)['docs']
         for result in results:
-            result['url'] = 'check_url?u=' + result['url']
+            result['filtered_url'] = 'check_url?u=' + result['url']
        
-    return render_template("search_results.html", results=results)
+    return render_template("search_results.html"
+                           , results=results
+                           , url_to_image=images_dict)
 
 @app.route('/check_url')
 def check_url():
@@ -88,11 +100,22 @@ def check_url():
         return render_template('error.html', status=status, description=responses[status])
     return redirect(url) 
 
+def unpickle(fn):
+    try:
+        with open(fn, 'rb') as file:
+            data = pickle.load(file)
+        return data
+    except Exception as e:
+        print(f"Error unpickling {fn}: {e}")
+        sys.exit(1)
+
 def start_app():
     global mySearchEngine
     global last_q
+    global images_dict
     last_q = None
     dir = 'search_engine'
+    images_dict = unpickle(f'../{dir}/startup_files/image_dict.dat')
     mySearchEngine = SearchEngine(
         debug=True
         , index_dir=f'../{dir}/indexdir'

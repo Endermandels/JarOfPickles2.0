@@ -9,7 +9,9 @@ from bs4 import BeautifulSoup
 from fast_autocomplete import AutoComplete, autocomplete_factory
 from fast_autocomplete.misc import *
 
-import os, pickle, re
+from gensim.models import Word2Vec
+
+import os, pickle, re, string
 
 # This function is needed because the scoring.FunctionWeighting.FunctionScorer
 # needs a max_quality function.
@@ -27,6 +29,7 @@ class SearchEngine(object):
 		page_rank_file = "./startup_files/page_rank.dat", 
 		titles_json = "./startup_files/titles.json", 
 		synonyms_json="./startup_files/synonyms.json", 
+		word_2_vec_model = "./startup_files/word2vec.model",
 		debug = False
 	):
 		# File and directory attributes
@@ -51,6 +54,7 @@ class SearchEngine(object):
 		self.current_query = None
 		self.current_page = 1
 		self.scoring_type = "both"
+		self.word_2_vec_model = Word2Vec.load(word_2_vec_model)
 
 		content_files = {
 			"synonyms": {"filepath": synonyms_json, "compress": False},
@@ -100,6 +104,9 @@ class SearchEngine(object):
 	def change_scoring_type(self, type):
 		allowed_types = ["both", "bm25", "pagerank"]
 		if type in allowed_types: self.scoring_type = type
+	
+	def get_scoring_type(self):
+		return self.scoring_type
 
 	# Combines page rank and bm25 to be used with whoosh.scoring.FunctionWeighting
 	def __custom_scorer(self, searcher, fieldname, text, matcher):
@@ -113,10 +120,11 @@ class SearchEngine(object):
 		return a*pr + b*bm25
 
 	# Updates current_query and current_result for a given string and upgrade option
-	def submit_query(self, query_string, upgrade=False):
+	def submit_query(self, query_string, upgrade=False, relev_results=False):
 		self.current_page = 1
 		self.current_query = query_string
 		self.current_result = self.get_result(query_string, upgrade=upgrade)
+		if relev_results: self.current_result = self.__get_relevant_results()
 
 		if self.debug: print(f"\"{query_string}\" WAS SUBMITTED")
 
@@ -156,6 +164,85 @@ class SearchEngine(object):
 		suggested_result.upgrade(query_result)
 		suggested_result.extend(query_result2)
 		return suggested_result
+
+	# Based on the results in self.current_result, return relevant results.
+	# Relevant results are determined by taking the top 2 documents in
+	# self.current_result and getting the top 2 most related term to each term
+	# in the query.
+	#
+	# The related terms are then used to from several queries to pass in the
+	# get_result method in which all the results from the queries are appended
+	# and then returned. 
+	def __get_relevant_results(self, k=2, debug=False):
+		count = 0
+		results = self.return_page(1)["docs"]
+		model = self.word_2_vec_model.wv
+
+		all_results = None
+		for result in results:
+			if count == k: break
+
+			terms = result["title"].translate(str.maketrans(
+				'', '', string.punctuation))
+			terms = list(set(terms.split()))
+			if debug: print(f"Terms: {terms}")
+
+			related_terms = []
+			for term in terms:
+				similar_terms = model.most_similar(term, topn=k)
+				similar_terms.insert(0, (term, 1))
+				related_terms.append(similar_terms)
+
+			indexes = [0] * len(related_terms)
+			for _ in range(k):
+				query, indexes = self.__get_next_related_query(related_terms, indexes)
+				if debug: print(f"Related query is: {query}")
+				if not all_results: all_results = self.get_result(query)
+				all_results.upgrade_and_extend(self.get_result(query))
+
+			count += 1
+
+		return all_results
+
+	# Returns what the next query is based on the related_terms and indexes.
+	# Also returns the updated array of indexes 
+	# (index corresponds to a row in related_terms).
+	#
+	# related_terms is an array of tuples. Each tuple has 2 elements.
+	# The first element is the term as a string and the second element
+	# is a score from 0 to 1 on how relevant that term is.
+	# Row is the row to get the related_terms.
+	def __get_next_related_query(self, related_terms, indexes):
+		max_score = 0
+		max_index = 0
+		for i in range(len(indexes)):
+			indexes[i] += 1
+			score = self.__get_relevance_score(related_terms, indexes)
+			if score > max_score:
+				max_score = score
+				max_index = i
+			indexes[i] -= 1
+
+		indexes[max_index] += 1
+
+		query = []
+		for i in range(len(indexes)):
+			j = indexes[i]
+			query.append(related_terms[i][j][0])
+		query = " OR ".join(query)
+		return query, indexes
+
+	# Gets the relevance score based on the related_terms and array of
+	# indexes (index corresponds to a row in related_terms).
+	# related_terms is an array of tuples. Each tuple has 2 elements.
+	# The first element is the term as a string and the second element
+	# is a score from 0 to 1 on how relevant that term is.
+	def __get_relevance_score(self, related_terms, indexes):
+		score = 0
+		for i in range(len(indexes)):
+			j = indexes[i]
+			score += related_terms[i][j][1]
+		return score
 
 	# Returns a dictionary representation of a page result
 	def return_page(self, page_num):
@@ -216,7 +303,6 @@ class SearchEngine(object):
 	def close_searcher(self):
 		self.searcher.close()
 
-
 # Terminal demo modified from fast_autocomplete.demo
 def demo(search_engine):
 	search_engine.change_scoring_type("both")
@@ -274,23 +360,22 @@ def demo(search_engine):
 		print("Current cursor:", cursor_index)
 		print("Current word:", ''.join(word_list[start_of_words[-1]:]))
 
-		search_engine.submit_query(query, upgrade=True)
+		search_engine.submit_query(query, upgrade=True, relev_results=True)
 
 		# suggested_query = search_engine.get_suggested_query(query,0, whole_string=True)
 		# search_engine.submit_query(suggested_query, upgrade=False)
 
 		search_engine.print_page(search_engine.return_page(1))
 
-
 def main():
-	string = "fairy tail manga"
+	# string = "fairy tail manga"
 	print("initializing search engine...")
 	mySearchEngine = SearchEngine(
 		debug=True,
 		url_map_file="./new_sample/url_map.dat",
 		docs_raw_dir ="./new_sample/_docs_raw/",
 		docs_cleaned_dir="./new_sample/_docs_cleaned/")
-	# mySearchEngine.submit_query(string, upgrade=True)
+	# mySearchEngine.submit_query(string, upgrade=True, relev_results=True)
 	# mySearchEngine.get_first_page()
 	print("starting demo...")
 	demo(mySearchEngine)

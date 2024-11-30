@@ -17,6 +17,11 @@ python3 page_rank.py
 
 Using the above command will create a pickle file, named "page_rank.dat", that stores a dictionary mapping URLs to their PageRank score.
 
+#Running word_2_vec_model.py
+
+python3 word_2_vec_model.py
+
+The above command will create the necessary word2vec models to use for related results in anime_search_engine.py.
 
 # Building anime_search_engine.py
 
