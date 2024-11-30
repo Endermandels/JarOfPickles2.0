@@ -11,7 +11,7 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir) 
 
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, jsonify
 from search_engine.anime_search_engine import SearchEngine
 
 
@@ -21,6 +21,7 @@ app = Flask(__name__)
 def index():
     global last_q
     last_q = None
+    mySearchEngine.change_scoring_type('both')
     return render_template('index.html')
 
 def link_status(url):
@@ -29,23 +30,31 @@ def link_status(url):
         return response.status_code
     except requests.RequestException:
         return 400
+    
+@app.route('/update-checkboxes', methods=['POST'])
+def update_checkboxes():
+    # Retrieve checkbox data from the JSON body
+    data = request.json
+    checked_boxes = data.get('checked', [])
 
-# Inspired by Pretty Printed on YouTube: https://youtu.be/PWEl1ysbPAY?si=eKrzQqsts-G-TvkK
+    if len(checked_boxes) == 2:
+        mySearchEngine.change_scoring_type('both')
+    elif len(checked_boxes) == 1:
+        mySearchEngine.change_scoring_type(checked_boxes[0])
+
+    print(f"Checked checkboxes: {checked_boxes}")
+
+    # Return a response (optional)
+    return jsonify({"message": "Checkbox states updated", "checked": checked_boxes})
+
+
 @app.route('/search')
 def search():
     global last_q
     page = request.args.get('page') # pagination
     q = request.args.get('q') # query
-    r = request.args.get('r') # rank
     print(page)
     print(q)
-    print(r)
-    
-        
-    
-    if r:
-        # change rank
-        mySearchEngine.change_scoring_type(r)
         
     if page and last_q:
         if page == 'next':
