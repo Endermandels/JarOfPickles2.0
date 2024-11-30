@@ -46,7 +46,6 @@ class SearchEngine(object):
 		custom_weighting = scoring.FunctionWeighting(self.__custom_scorer)
 		custom_weighting.FunctionScorer.max_quality = max_quality
 		self.searcher = self.ix.searcher(weighting=custom_weighting)
-		self.search_mode = "title"
 		self.document_list = list(self.searcher.documents())
 		self.current_result = None
 		self.current_query = None
@@ -117,7 +116,6 @@ class SearchEngine(object):
 	def submit_query(self, query_string, upgrade=False):
 		self.current_page = 1
 		self.current_query = query_string
-		if self.search_mode == "content": upgrade=False
 		self.current_result = self.get_result(query_string, upgrade=upgrade)
 
 		if self.debug: print(f"\"{query_string}\" WAS SUBMITTED")
@@ -139,24 +137,24 @@ class SearchEngine(object):
 			result = (results[0][0]).strip()
 			return string[0:last_word_index]+result
 
-	# Changes search_mode to a given mode that's in the schema
-	def change_search_mode(self, new_mode):
-		allowed_modes = ["title", "content"]
-		if new_mode in allowed_modes: self.search_mode = new_mode
-
 	# Returns a whoosh.searching.results object for a given string
 	# Setting upgrade to True uses whoosh.searching.results.upgrade().
 	# A given string is converted with Fast Autocomplete and used to
 	# upgrade the Fast Autocomplete result.
 	def get_result(self, query_string, upgrade=False):
-		query_obj = QueryParser(self.search_mode, self.ix.schema).parse(query_string)
+		query_obj = QueryParser("title", self.ix.schema).parse(query_string)
 		query_result = self.searcher.search(query_obj, limit=None)
 		if not upgrade: return query_result
 
+		query_obj2 = QueryParser("content", self.ix.schema).parse(query_string)
+		query_result2 = self.searcher.search(query_obj2, limit=None)
+
 		suggested_query = self.get_suggested_query(query_string, 0, whole_string=True)
-		suggested_query_obj = QueryParser(self.search_mode, self.ix.schema).parse(suggested_query)
+		suggested_query_obj = QueryParser("title", self.ix.schema).parse(suggested_query)
+
 		suggested_result = self.searcher.search(suggested_query_obj, limit=None)
 		suggested_result.upgrade(query_result)
+		suggested_result.extend(query_result2)
 		return suggested_result
 
 	# Returns a dictionary representation of a page result
@@ -221,7 +219,6 @@ class SearchEngine(object):
 
 # Terminal demo modified from fast_autocomplete.demo
 def demo(search_engine):
-	search_engine.change_search_mode("title")
 	search_engine.change_scoring_type("both")
 	word_list = []
 	start_of_words = [0]
