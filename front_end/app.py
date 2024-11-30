@@ -1,6 +1,9 @@
 import os
 import sys
 import inspect
+import requests
+from http.client import responses
+
 
 # Move CWD to parent dir to have access to search_engine
 # Code from https://stackoverflow.com/questions/714063/importing-modules-from-parent-folder
@@ -8,7 +11,7 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir) 
 
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect
 from search_engine.anime_search_engine import SearchEngine
 
 
@@ -17,6 +20,13 @@ app = Flask(__name__)
 @app.route('/')
 def index():
     return render_template('index.html')
+
+def link_status(url):
+    try:
+        response = requests.head(url, allow_redirects=True, timeout=5)
+        return response.status_code
+    except requests.RequestException:
+        return 400
 
 # Inspired by Pretty Printed on YouTube: https://youtu.be/PWEl1ysbPAY?si=eKrzQqsts-G-TvkK
 @app.route('/search')
@@ -39,12 +49,21 @@ def search():
     results = []
     
     if q and mySearchEngine:
-        # mySearchEngine.submit_query(q)
         mySearchEngine.submit_query(q, upgrade=True)
         results = mySearchEngine.return_page(1)['docs']
+        for result in results:
+            result['url'] = 'check_url?u=' + result['url']
        
     return render_template("search_results.html", results=results)
-    
+
+@app.route('/check_url')
+def check_url():
+    url = request.args.get('u') # url to check
+    status = link_status(url)
+    if status != 200:
+        return render_template('error.html', status=status, description=responses[status])
+    return redirect(url) 
+
 def start_app():
     global mySearchEngine
     global last_q
