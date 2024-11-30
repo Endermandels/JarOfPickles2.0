@@ -51,13 +51,14 @@ def start_app():
     last_q = None
     dir = 'search_engine'
     mySearchEngine = SearchEngine(
-        index_dir=f'../{dir}/indexdir/'
+        debug=True
+        , index_dir=f'../{dir}/indexdir'
         , page_rank_file=f'../{dir}/startup_files/page_rank.dat'
         , titles_json=f'../{dir}/startup_files/titles.json'
         , synonyms_json=f'../{dir}/startup_files/synonyms.json'
-        , url_map_file=f'../{dir}/sample/url_map.dat'
-        , docs_raw_dir=f'../{dir}/sample/_docs_raw/'
-        , docs_cleaned_dir=f'../{dir}/sample/_docs_cleaned/')
+        , url_map_file=f'../{dir}/new_sample/url_map.dat'
+        , docs_raw_dir=f'../{dir}/new_sample/_docs_raw/'
+        , docs_cleaned_dir=f'../{dir}/new_sample/_docs_cleaned/')
     app.run(debug=True)
     mySearchEngine.close_searcher()
 
