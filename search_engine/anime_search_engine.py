@@ -119,11 +119,13 @@ class SearchEngine(object):
 		return a*pr + b*bm25
 
 	# Updates current_query and current_result for a given string and upgrade option
-	def submit_query(self, query_string, upgrade=False):
+	def submit_query(self, query_string, upgrade=False, relev_results=False):
 		self.current_page = 1
 		self.current_query = query_string
 		if self.search_mode == "content": upgrade=False
 		self.current_result = self.get_result(query_string, upgrade=upgrade)
+		self.relevant_results = None
+		if relev_results: self.relevant_results = self._get_relevant_results()
 
 		if self.debug: print(f"\"{query_string}\" WAS SUBMITTED")
 
@@ -163,6 +165,50 @@ class SearchEngine(object):
 		suggested_result = self.searcher.search(suggested_query_obj, limit=None)
 		suggested_result.upgrade(query_result)
 		return suggested_result
+
+	def _get_relevant_results(self, k=3, num_results=10):
+		count = 0
+		results = self.return_page(1)["docs"]
+		model = self.word_2_vec_model.wv
+
+		if self.debug: print(f"Results {results}")
+		for result in results:
+			if count == k: return
+			if self.debug: print(f"Result: {result}")
+			doc_num = self.searcher.document_number(url=result["url"])
+			terms = result["title"].translate(str.maketrans(
+				'', '', string.punctuation))
+			terms = terms.split()
+			if self.debug: print(f"Terms: {terms}")
+			related_terms = []
+			tf_idf_score = []
+			for term in terms:
+				
+				
+				similar_terms = model.most_similar(term)
+				similar_terms.insert(0, (term, 1))
+				related_terms.append(similar_terms)
+			if self.debug: print(f"Related terms: {related_terms}")
+			count += 1
+
+		# Hard-coded to only take the first term
+		# sims = model.wv.most_similar(terms[0][1])
+		# i = 0
+		# query = QueryParser("content", self.ix.schema, group=AndGroup).parse(sims[0][0])
+		# print(f"Searching for {query}")
+		# all_relevant_results = self.searcher.search(query)
+		# for sim in sims[1:]:
+		# 	query = QueryParser("content", self.ix.schema, group=AndGroup).parse(sim[0])
+		# 	print(f"Searching for {query}")
+		# 	relevant_results = self.searcher.search(query)
+		# 	all_relevant_results.upgrade_and_extend(relevant_results)
+		# 	i += 1
+		# 	if i > k: break
+		# i = 0
+		# for result in all_relevant_results: 
+		# 	print(f'{result["title"]}\n\t\033[94m{result["url"]}\033[0m\n')
+		# 	i += 1
+		# 	if i >= num_results: return
 
 	# Returns a dictionary representation of a page result
 	def return_page(self, page_num):
@@ -222,48 +268,6 @@ class SearchEngine(object):
 	# Closes the searcher that is opened during initialization
 	def close_searcher(self):
 		self.searcher.close()
-
-	def get_relevant_results(self, k=3, num_results=10):
-		count = 0
-		results = self.return_page(1)["docs"]
-		model = self.word_2_vec_model.wv
-
-		if self.debug: print(f"Results {results}")
-		for result in results:
-			if count == k: return
-			if self.debug: print(f"Result: {result}")
-			terms = result["title"].translate(str.maketrans(
-				'', '', string.punctuation))
-			terms = terms.split()
-			if self.debug: print(f"Terms: {terms}")
-			related_terms = []
-			for term in terms:
-				similar_terms = model.most_similar(term)
-				similar_terms.insert(0, (term, 1))
-				related_terms.append(similar_terms)
-			print(related_terms)
-			exit()
-			count += 1
-
-		# Hard-coded to only take the first term
-		# sims = model.wv.most_similar(terms[0][1])
-		# i = 0
-		# query = QueryParser("content", self.ix.schema, group=AndGroup).parse(sims[0][0])
-		# print(f"Searching for {query}")
-		# all_relevant_results = self.searcher.search(query)
-		# for sim in sims[1:]:
-		# 	query = QueryParser("content", self.ix.schema, group=AndGroup).parse(sim[0])
-		# 	print(f"Searching for {query}")
-		# 	relevant_results = self.searcher.search(query)
-		# 	all_relevant_results.upgrade_and_extend(relevant_results)
-		# 	i += 1
-		# 	if i > k: break
-		# i = 0
-		# for result in all_relevant_results: 
-		# 	print(f'{result["title"]}\n\t\033[94m{result["url"]}\033[0m\n')
-		# 	i += 1
-		# 	if i >= num_results: return
-
 
 # Terminal demo modified from fast_autocomplete.demo
 def demo(search_engine):
@@ -332,16 +336,14 @@ def demo(search_engine):
 
 
 def main():
-	# string = "fairy tail manga"
-	string = "fantasy"
+	string = "fairy tail manga"
 	print("initializing search engine...")
 	mySearchEngine = SearchEngine(
 		debug=True,
 		url_map_file="./new_sample/url_map.dat",
 		docs_raw_dir ="./new_sample/_docs_raw/",
 		docs_cleaned_dir="./new_sample/_docs_cleaned/")
-	mySearchEngine.submit_query(string, upgrade=True)
-	mySearchEngine.get_relevant_results()
+	mySearchEngine.submit_query(string, upgrade=True, relev_results=True)
 	# mySearchEngine.get_first_page()
 	# print("starting demo...")
 	# demo(mySearchEngine)
