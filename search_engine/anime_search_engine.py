@@ -52,7 +52,6 @@ class SearchEngine(object):
 		self.search_mode = "title"
 		self.document_list = list(self.searcher.documents())
 		self.current_result = None
-		self.relevant_results = None
 		self.current_query = None
 		self.current_page = 1
 		self.scoring_type = "both"
@@ -124,8 +123,7 @@ class SearchEngine(object):
 		self.current_query = query_string
 		if self.search_mode == "content": upgrade=False
 		self.current_result = self.get_result(query_string, upgrade=upgrade)
-		self.relevant_results = None
-		if relev_results: self.relevant_results = self._get_relevant_results()
+		if relev_results: self.current_result = self.__get_relevant_results()
 
 		if self.debug: print(f"\"{query_string}\" WAS SUBMITTED")
 
@@ -166,49 +164,84 @@ class SearchEngine(object):
 		suggested_result.upgrade(query_result)
 		return suggested_result
 
-	def _get_relevant_results(self, k=3, num_results=10):
+	# Based on the results in self.current_result, return relevant results.
+	# Relevant results are determined by taking the top 2 documents in
+	# self.current_result and getting the top 2 most related term to each term
+	# in the query.
+	#
+	# The related terms are then used to from several queries to pass in the
+	# get_result method in which all the results from the queries are appended
+	# and then returned. 
+	def __get_relevant_results(self, k=2, debug=False):
 		count = 0
 		results = self.return_page(1)["docs"]
 		model = self.word_2_vec_model.wv
 
-		if self.debug: print(f"Results {results}")
+		all_results = None
 		for result in results:
-			if count == k: return
-			if self.debug: print(f"Result: {result}")
-			doc_num = self.searcher.document_number(url=result["url"])
+			if count == k: break
+
 			terms = result["title"].translate(str.maketrans(
 				'', '', string.punctuation))
-			terms = terms.split()
-			if self.debug: print(f"Terms: {terms}")
+			terms = list(set(terms.split()))
+			if debug: print(f"Terms: {terms}")
+
 			related_terms = []
-			tf_idf_score = []
 			for term in terms:
-				
-				
-				similar_terms = model.most_similar(term)
+				similar_terms = model.most_similar(term, topn=k)
 				similar_terms.insert(0, (term, 1))
 				related_terms.append(similar_terms)
-			if self.debug: print(f"Related terms: {related_terms}")
+
+			indexes = [0] * len(related_terms)
+			for _ in range(k):
+				query, indexes = self.__get_next_related_query(related_terms, indexes)
+				if debug: print(f"Related query is: {query}")
+				if not all_results: all_results = self.get_result(query)
+				all_results.upgrade_and_extend(self.get_result(query))
+
 			count += 1
 
-		# Hard-coded to only take the first term
-		# sims = model.wv.most_similar(terms[0][1])
-		# i = 0
-		# query = QueryParser("content", self.ix.schema, group=AndGroup).parse(sims[0][0])
-		# print(f"Searching for {query}")
-		# all_relevant_results = self.searcher.search(query)
-		# for sim in sims[1:]:
-		# 	query = QueryParser("content", self.ix.schema, group=AndGroup).parse(sim[0])
-		# 	print(f"Searching for {query}")
-		# 	relevant_results = self.searcher.search(query)
-		# 	all_relevant_results.upgrade_and_extend(relevant_results)
-		# 	i += 1
-		# 	if i > k: break
-		# i = 0
-		# for result in all_relevant_results: 
-		# 	print(f'{result["title"]}\n\t\033[94m{result["url"]}\033[0m\n')
-		# 	i += 1
-		# 	if i >= num_results: return
+		return all_results
+
+	# Returns what the next query is based on the related_terms and indexes.
+	# Also returns the updated array of indexes 
+	# (index corresponds to a row in related_terms).
+	#
+	# related_terms is an array of tuples. Each tuple has 2 elements.
+	# The first element is the term as a string and the second element
+	# is a score from 0 to 1 on how relevant that term is.
+	# Row is the row to get the related_terms.
+	def __get_next_related_query(self, related_terms, indexes):
+		max_score = 0
+		max_index = 0
+		for i in range(len(indexes)):
+			indexes[i] += 1
+			score = self.__get_relevance_score(related_terms, indexes)
+			if score > max_score:
+				max_score = score
+				max_index = i
+			indexes[i] -= 1
+
+		indexes[max_index] += 1
+
+		query = []
+		for i in range(len(indexes)):
+			j = indexes[i]
+			query.append(related_terms[i][j][0])
+		query = " OR ".join(query)
+		return query, indexes
+
+	# Gets the relevance score based on the related_terms and array of
+	# indexes (index corresponds to a row in related_terms).
+	# related_terms is an array of tuples. Each tuple has 2 elements.
+	# The first element is the term as a string and the second element
+	# is a score from 0 to 1 on how relevant that term is.
+	def __get_relevance_score(self, related_terms, indexes):
+		score = 0
+		for i in range(len(indexes)):
+			j = indexes[i]
+			score += related_terms[i][j][1]
+		return score
 
 	# Returns a dictionary representation of a page result
 	def return_page(self, page_num):
@@ -327,27 +360,26 @@ def demo(search_engine):
 		print("Current cursor:", cursor_index)
 		print("Current word:", ''.join(word_list[start_of_words[-1]:]))
 
-		search_engine.submit_query(query, upgrade=True)
+		search_engine.submit_query(query, upgrade=True, relev_results=True)
 
 		# suggested_query = search_engine.get_suggested_query(query,0, whole_string=True)
 		# search_engine.submit_query(suggested_query, upgrade=False)
 
 		search_engine.print_page(search_engine.return_page(1))
 
-
 def main():
-	string = "fairy tail manga"
+	# string = "fairy tail manga"
 	print("initializing search engine...")
 	mySearchEngine = SearchEngine(
 		debug=True,
 		url_map_file="./new_sample/url_map.dat",
 		docs_raw_dir ="./new_sample/_docs_raw/",
 		docs_cleaned_dir="./new_sample/_docs_cleaned/")
-	mySearchEngine.submit_query(string, upgrade=True, relev_results=True)
+	# mySearchEngine.submit_query(string, upgrade=True, relev_results=True)
 	# mySearchEngine.get_first_page()
-	# print("starting demo...")
-	# demo(mySearchEngine)
-	# mySearchEngine.close_searcher()
+	print("starting demo...")
+	demo(mySearchEngine)
+	mySearchEngine.close_searcher()
 
 if __name__ == "__main__":
 	main()
