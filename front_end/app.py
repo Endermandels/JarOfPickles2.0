@@ -79,22 +79,21 @@ def search():
     print(q)
         
     if page and last_q:
-        if page == 'next':
-            results = mySearchEngine.get_next_page()
-            if results:
-                results = results['docs']
-                for result in results:
-                    result['filtered_url'] = 'check_url?u=' + result['url']
-                return render_template("search_results.html", results=results, url_to_image=images_dict)    
-        elif page == 'prev':
-            results = mySearchEngine.get_prev_page()
-            if results:
-                results = results['docs']
-                for result in results:
-                    result['filtered_url'] = 'check_url?u=' + result['url']
-                return render_template("search_results.html", results=results, url_to_image=images_dict)    
+        if page not in ['next', 'prev', 'first']:
+            print('invalid page request')
         else:
-            print("invalid page request")
+            if page == 'next':
+                results = mySearchEngine.get_next_page()
+            elif page == 'prev':
+                results = mySearchEngine.get_prev_page()
+            elif page == 'first':
+                results = mySearchEngine.get_first_page()
+                
+            if results:
+                results = results['docs']
+                for result in results:
+                    result['filtered_url'] = 'check_url?u=' + result['url']
+                return render_template("search_results.html", results=results, url_to_image=images_dict)    
     
     if not q and last_q:
         q = last_q

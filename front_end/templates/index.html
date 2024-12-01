@@ -146,6 +146,12 @@
                 &lt; Prev
             </button>
             <button 
+                hx-get="/search?page=first" 
+                hx-target="#results"
+                hx-trigger="click">
+                First
+            </button>
+            <button 
                 hx-get="/search?page=next" 
                 hx-target="#results"
                 hx-trigger="click">
