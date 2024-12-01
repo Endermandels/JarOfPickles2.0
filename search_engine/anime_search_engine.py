@@ -49,7 +49,6 @@ class SearchEngine(object):
 		custom_weighting = scoring.FunctionWeighting(self.__custom_scorer)
 		custom_weighting.FunctionScorer.max_quality = max_quality
 		self.searcher = self.ix.searcher(weighting=custom_weighting)
-		self.document_list = list(self.searcher.documents())
 		self.current_result = None
 		self.current_query = None
 		self.current_page = 1
@@ -110,13 +109,13 @@ class SearchEngine(object):
 
 	# Combines page rank and bm25 to be used with whoosh.scoring.FunctionWeighting
 	def __custom_scorer(self, searcher, fieldname, text, matcher):
-		url = self.document_list[matcher.id()]["url"]
+		url = searcher.stored_fields(matcher.id())["url"]
 		pr = self.page_rank[url]
 		bm25 = scoring.BM25F().scorer(searcher, fieldname, text).score(matcher)
 		a = 0
 		b = 0
-		if self.scoring_type == "both" or self.scoring_type == "pagerank": a = 100000 # Most PageRank is 1E-6 place
-		if self.scoring_type == "both" or self.scoring_type == "bm25": b = 1.5
+		if self.scoring_type in ["both", "pagerank"]: a = 100000 # Most PageRank is 1E-6 place
+		if self.scoring_type in ["both", "bm25"]: b = 1.5
 		return a*pr + b*bm25
 
 	# Updates current_query and current_result for a given string and upgrade option

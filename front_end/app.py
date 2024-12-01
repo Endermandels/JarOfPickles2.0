@@ -21,6 +21,8 @@ app = Flask(__name__)
 @app.route('/')
 def index():
     global last_q
+    global show_related_results
+    show_related_results = False
     last_q = None
     mySearchEngine.change_scoring_type('both')
     return render_template('index.html')
@@ -34,19 +36,38 @@ def link_status(url):
     
 @app.route('/update-checkboxes', methods=['POST'])
 def update_checkboxes():
+    global show_related_results
+    
     # Retrieve checkbox data from the JSON body
     data = request.json
     checked_boxes = data.get('checked', [])
+    
+    has_pagerank = 'pagerank' in checked_boxes
+    has_bm25 = 'bm25' in checked_boxes
+    has_related_results = 'related_results' in checked_boxes
 
-    if len(checked_boxes) == 2:
+    if has_pagerank and has_bm25:
         mySearchEngine.change_scoring_type('both')
-    elif len(checked_boxes) == 1:
-        mySearchEngine.change_scoring_type(checked_boxes[0])
+    elif has_pagerank:
+        mySearchEngine.change_scoring_type('pagerank')
+    elif has_bm25:
+        mySearchEngine.change_scoring_type('bm25')
+    
+    if has_related_results:
+        show_related_results = True
+    else:
+        show_related_results = False
 
     print(f"Checked checkboxes: {checked_boxes}")
+    
+    current_scoring_type = mySearchEngine.get_scoring_type()
 
-    # Return a response (optional)
-    return jsonify({"message": "Checkbox states updated", "checked": checked_boxes})
+    # Return a response detailing which checkbox should be on
+    return jsonify({"message": "Checkbox states updated", "checked": {
+        'pagerank': current_scoring_type in ['both', 'pagerank']
+        , 'bm25': current_scoring_type in ['both', 'bm25']
+        , 'related_results': has_related_results
+    }})
 
 
 @app.route('/search')
@@ -83,7 +104,7 @@ def search():
     results = []
     
     if q and mySearchEngine:
-        mySearchEngine.submit_query(q, upgrade=True)
+        mySearchEngine.submit_query(q, upgrade=True, relev_results=show_related_results)
         results = mySearchEngine.return_page(1)['docs']
         for result in results:
             result['filtered_url'] = 'check_url?u=' + result['url']
@@ -111,8 +132,10 @@ def unpickle(fn):
 
 def start_app():
     global mySearchEngine
-    global last_q
     global images_dict
+    global last_q
+    global show_related_results
+    show_related_results = False
     last_q = None
     dir = 'search_engine'
     images_dict = unpickle(f'../{dir}/startup_files/image_dict.dat')
@@ -124,7 +147,8 @@ def start_app():
         , synonyms_json=f'../{dir}/startup_files/synonyms.json'
         , url_map_file=f'../{dir}/new_sample/url_map.dat'
         , docs_raw_dir=f'../{dir}/new_sample/_docs_raw/'
-        , docs_cleaned_dir=f'../{dir}/new_sample/_docs_cleaned/')
+        , docs_cleaned_dir=f'../{dir}/new_sample/_docs_cleaned/'
+        , word_2_vec_model=f'../{dir}/startup_files/word2vec.model')
     app.run(debug=True)
     mySearchEngine.close_searcher()
 
