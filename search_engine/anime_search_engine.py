@@ -115,7 +115,7 @@ class SearchEngine(object):
 		a = 0
 		b = 0
 		if self.scoring_type in ["both", "pagerank"]: a = 100000 # Most PageRank is 1E-6 place
-		if self.scoring_type in ["both", "bm25"]: b = 2.0
+		if self.scoring_type in ["both", "bm25"]: b = 1.5
 		return a*pr + b*bm25
 
 	# Updates current_query and current_result for a given string and upgrade option
