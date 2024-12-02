@@ -153,15 +153,12 @@ class SearchEngine(object):
 		query_result = self.searcher.search(query_obj, limit=None)
 		if not upgrade: return query_result
 
-		query_obj2 = QueryParser("content", self.ix.schema).parse(query_string)
-		query_result2 = self.searcher.search(query_obj2, limit=None)
-
 		suggested_query = self.get_suggested_query(query_string, 0, whole_string=True)
+		suggested_query = f"({suggested_query}) OR content:({query_string})"
 		suggested_query_obj = QueryParser("title", self.ix.schema).parse(suggested_query)
 
 		suggested_result = self.searcher.search(suggested_query_obj, limit=None)
 		suggested_result.upgrade(query_result)
-		suggested_result.extend(query_result2)
 		return suggested_result
 
 	# Based on the results in self.current_result, return relevant results.
