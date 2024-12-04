@@ -55,6 +55,7 @@ class SearchEngine(object):
 		self.current_page = 1
 		self.scoring_type = "both"
 		self.word_2_vec_model = Word2Vec.load(word_2_vec_model)
+		self.model_vocab = set(self.word_2_vec_model.wv.key_to_index)
 
 		content_files = {
 			"synonyms": {"filepath": synonyms_json, "compress": False},
@@ -184,14 +185,16 @@ class SearchEngine(object):
 
 			terms = result["title"].translate(str.maketrans(
 				'', '', string.punctuation))
-			terms = list(set(terms.split()))
+			terms = terms.split()
 			if debug: print(f"Terms: {terms}")
 
 			related_terms = []
 			for term in terms:
-				similar_terms = model.most_similar(term, topn=k)
-				similar_terms.insert(0, (term, 1))
-				related_terms.append(similar_terms)
+				if term not in self.model_vocab: terms.remove(term)
+				else:
+					similar_terms = model.most_similar(term, topn=k)
+					similar_terms.insert(0, (term, 1))
+					related_terms.append(similar_terms)
 
 			indexes = [0] * len(related_terms)
 			for _ in range(k):
