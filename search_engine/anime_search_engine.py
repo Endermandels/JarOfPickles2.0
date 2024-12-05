@@ -3,7 +3,7 @@ from whoosh.fields import *
 from whoosh.analysis import StemmingAnalyzer, SimpleAnalyzer
 from whoosh.qparser import QueryParser
 from whoosh.searching import ResultsPage
-from whoosh import scoring
+from whoosh import scoring, collectors
 
 from bs4 import BeautifulSoup
 from fast_autocomplete import AutoComplete, autocomplete_factory
@@ -149,9 +149,23 @@ class SearchEngine(object):
 	# Setting upgrade to True uses whoosh.searching.results.upgrade().
 	# A given string is converted with Fast Autocomplete and used to
 	# upgrade the Fast Autocomplete result.
-	def get_result(self, query_string, upgrade=False):
+	def get_result(self, query_string, upgrade=False, time_limit=False):
 		query_obj = QueryParser("title", self.ix.schema).parse(query_string)
-		query_result = self.searcher.search(query_obj, limit=None)
+		if time_limit:
+			c = collectors.UnlimitedCollector()
+
+			# Greedy means that last hit is added when time limit is reached.
+			# use_alarm = False means that UNIX signal.SIGALRM will not be
+			# used (frontend app.py does not work if UNIX signal.SIGALRM is
+			# used)
+			time_c = collectors.TimeLimitCollector(c, timelimit=0.15, greedy=True, 
+				use_alarm=False)
+			try: self.searcher.search_with_collector(query_obj, time_c)
+			except: 
+				if self.debug: print("Time ran out for search")
+			finally: query_result = time_c.results()
+
+		else: query_result = self.searcher.search(query_obj, limit=None)
 		if not upgrade: return query_result
 
 		suggested_query = self.get_suggested_query(query_string, 0, whole_string=True)
@@ -196,8 +210,8 @@ class SearchEngine(object):
 			for _ in range(k):
 				query, indexes = self.__get_next_related_query(related_terms, indexes)
 				if debug: print(f"Related query is: {query}")
-				if not all_results: all_results = self.get_result(query)
-				all_results.upgrade_and_extend(self.get_result(query))
+				if not all_results: all_results = self.get_result(query, time_limit=True)
+				all_results.upgrade_and_extend(self.get_result(query,time_limit=True))
 
 			count += 1
 
