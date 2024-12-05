@@ -153,7 +153,13 @@ class SearchEngine(object):
 		query_obj = QueryParser("title", self.ix.schema).parse(query_string)
 		if time_limit:
 			c = collectors.UnlimitedCollector()
-			time_c = collectors.TimeLimitCollector(c, 0.2, greedy=True)
+
+			# Greedy means that last hit is added when time limit is reached.
+			# use_alarm = False means that UNIX signal.SIGALRM will not be
+			# used (frontend app.py does not work if UNIX signal.SIGALRM is
+			# used)
+			time_c = collectors.TimeLimitCollector(c, timelimit=0.15, greedy=True, 
+				use_alarm=False)
 			try: self.searcher.search_with_collector(query_obj, time_c)
 			except: 
 				if self.debug: print("Time ran out for search")
