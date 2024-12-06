@@ -2,11 +2,14 @@ from bs4 import BeautifulSoup
 from threading import Thread
 import pickle, re, os, json
 
+count = 0
 titles_dic = {}
+synonyms_dic = {}
+TOTAL = None
 
 # Removes clutter from titles
 def clean_title(title):
-	global synonym_dic
+	global synonyms_dic
 	title = title.lower().strip()
 	title = re.sub(r"(\s*-\s*myanimelist\.net\s*)$", "", title)
 	title = re.sub(r"(\s*\|\s*.+)$", "", title)
@@ -14,7 +17,7 @@ def clean_title(title):
 	match = re.search(r"(\s*\(.+\)\s*)$", title)
 	if (match):
 		title = re.sub(r"(\s*\(.+\)\s*)$", "", title)
-		# synonym_dic[title] = [match.group().strip(" ()")]
+		synonyms_dic[title] = [match.group().strip(" ()")]
 	return title
 
 # Unpickles pickle files
@@ -30,10 +33,10 @@ def __unpickle(path):
 def get_titles(start, stop, urls, url_list, docs_raw_dir):
 	_title = ""
 	_popularity = 0
-	count = 1
+	global count
 	global titles_dic
 
-	for u in url_list[start:stop-1]:
+	for u in url_list[start:stop]:
 		file_name = urls[u]
 		# Get the title for the file name
 		with open(docs_raw_dir+file_name, "r") as html:
@@ -45,23 +48,25 @@ def get_titles(start, stop, urls, url_list, docs_raw_dir):
 				_popularity = int(_popularity)
 			except AttributeError:
 				_popularity = 99999
-			titles_dic[cleaned_title] = [None, None, 99999-_popularity]
+			titles_dic[cleaned_title] = [{}, None, 99999-_popularity]
 
 		print(f"({count}) got {cleaned_title}: {_popularity}")
 		count += 1
 
 # Pickles a dictionary mapping titles to an empty dictionary
 def main():
+	global TOTAL
 	path = os.path.dirname(os.path.realpath(__file__))
-	docs_raw_dir = '../new_sample/_docs_raw/'
 	os.chdir(path)
+	sample_dir = "sample_copy"
+	docs_raw_dir = f'../{sample_dir}/_docs_raw/'
 
 	thread_num = 8
 	threads = [None]*thread_num
 	ranges = [0]*thread_num
-	urls = __unpickle('../new_sample/url_map.dat')
+	urls = __unpickle(f'../{sample_dir}/url_map.dat')
 	url_list = list(urls.keys())
-	total = len(urls)-1
+	total = TOTAL if TOTAL else len(urls)-1
 	global titles_dic
 	for i in range(thread_num):
 		if i == 0:
@@ -87,7 +92,10 @@ def main():
 		thread.join()
 
 	with open("titles.json","w") as f:
-		json.dump(titles_dic,f)
+		json.dump(titles_dic,f, indent=4)
+
+	with open("synonyms.json","w") as f:
+		json.dump(synonyms_dic,f, indent=4)
 
 
 if __name__ == '__main__':

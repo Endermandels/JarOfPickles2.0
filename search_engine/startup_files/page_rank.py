@@ -39,7 +39,8 @@ def __pickle_page_rank(df_path, d=0.85, epsilon = 0.0001):
 def main():
 	path = os.path.dirname(os.path.realpath(__file__))
 	os.chdir(path)
-	__pickle_page_rank("../new_sample/adjacency_matrix.dat")
+	sample_dir = "sample_copy"
+	__pickle_page_rank(f"../{sample_dir}/adjacency_matrix.dat")
 
 if __name__ == '__main__':
 	main()

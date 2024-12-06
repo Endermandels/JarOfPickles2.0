@@ -1,46 +1,48 @@
-import pickle, re, json
+import os, json
 
 def main():
+	path = os.path.dirname(os.path.realpath(__file__))
+	os.chdir(path)
+
 	found = {}
-	s = None
+	synonyms_dic = None
 
-	with open("synonym.dat","rb") as f:
-		s = pickle.load(f)
+	with open("synonyms.json", "r") as f:
+		synonyms_dic = json.load(f)
 
-	for i in s:
-		if s[i][0] not in found: found[s[i][0]] = [i]
-		else: found[s[i][0]].append(i)
+	for japan_title in synonyms_dic:
+		synonym = synonyms_dic[japan_title][0]
+		if synonym not in found: found[synonym] = [japan_title]
+		else: found[synonym].append(japan_title)
 
 	temp = found.copy()
 	for j in temp:
 		if len(temp[j]) == 1: found.pop(j)
 
-	print(len(found))
+	print(f"{len(found)} synonyms mapped to multiple Japanese titles")
 
-	for k in found:
+	for synonym in found:
 		count = 0
-		print(k)
-		for titles in found[k]:
+		print(synonym)
+		for titles in found[synonym]:
 			print(f"\t{titles} ({count})")
 			count += 1
 		while (True):
 			x = input("Choose: ")
 			if x == "none":
-				for titles in found[k]: s.pop(titles)
-				break
-			elif x == "all":
+				for titles in found[synonym]: synonyms_dic.pop(titles)
 				break
 			else:
 				try:
 					x = int(x)
-					found[k].pop(x)
-					for titles in found[k]: s.pop(titles)
+					found[synonym].pop(x)
+					for titles in found[synonym]: synonyms_dic.pop(titles)
 					break
 				except:
 					print("try again")
 
-	with open("synonym2.dat", "wb") as f:
-		pickle.dump(s, f)
+	with open("edited_synonyms.json", "w") as f:
+		json.dump(synonyms_dic,f, indent=4)
 
 
 if __name__ == '__main__':
