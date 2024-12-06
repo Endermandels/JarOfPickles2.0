@@ -279,6 +279,7 @@ class SearchEngine(object):
 
 	# Prints the page_num page for a result dictionary
 	def print_page(self, result_dic):
+		if len(result_dic) == 0: return
 		print(f"--------------------\n{result_dic["total"]} RESULTS")
 		if result_dic["total"] == 0: print("No results found")
 		for result in result_dic["docs"]: print(f'{result["title"]}\n\t\033[94m{result["url"]}\033[0m\n')
@@ -373,7 +374,7 @@ def demo(search_engine):
 		print("Current cursor:", cursor_index)
 		print("Current word:", ''.join(word_list[start_of_words[-1]:]))
 
-		search_engine.submit_query(query, upgrade=True, relev_results=True)
+		search_engine.submit_query(query, upgrade=True, relev_results=False)
 
 		# suggested_query = search_engine.get_suggested_query(query,0, whole_string=True)
 		# search_engine.submit_query(suggested_query, upgrade=False)
@@ -381,13 +382,14 @@ def demo(search_engine):
 		search_engine.print_page(search_engine.return_page(1))
 
 def main():
+	sample_dir = "new_sample"
 	# string = "fairy tail manga"
 	print("initializing search engine...")
 	mySearchEngine = SearchEngine(
 		debug=True,
-		url_map_file="./new_sample/url_map.dat",
-		docs_raw_dir ="./new_sample/_docs_raw/",
-		docs_cleaned_dir="./new_sample/_docs_cleaned/")
+		url_map_file=f"./{sample_dir}/url_map.dat",
+		docs_raw_dir =f"./{sample_dir}/_docs_raw/",
+		docs_cleaned_dir=f"./{sample_dir}/_docs_cleaned/")
 	# mySearchEngine.submit_query(string, upgrade=True, relev_results=True)
 	# mySearchEngine.get_first_page()
 	print("starting demo...")

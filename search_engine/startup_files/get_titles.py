@@ -58,7 +58,7 @@ def main():
 	global TOTAL
 	path = os.path.dirname(os.path.realpath(__file__))
 	os.chdir(path)
-	sample_dir = "sample_copy"
+	sample_dir = "new_sample"
 	docs_raw_dir = f'../{sample_dir}/_docs_raw/'
 
 	thread_num = 8
