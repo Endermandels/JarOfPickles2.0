@@ -101,7 +101,7 @@ def main():
 		"mikagura gakuen kumikyoku",
 		"dance dance danseur",
 		"deaimon",
-		"mamahaha no tsurego ga moto kano datta",
+		"mamahaha no tsurego ga motokano datta",
 		"chainsaw man",
 		"magi: the labyrinth of magic",
 		"flcl",
@@ -115,7 +115,7 @@ def main():
 		"yurei deco"
 	]
 	# test_search_engine_init()
-	test_searching(anime_list[2:7], relev_results=True)
+	test_searching(anime_list[0:10], relev_results=False)
 
 	
 
