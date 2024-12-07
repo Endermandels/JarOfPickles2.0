@@ -1,5 +1,11 @@
 # JarOfPickles
 
+# Install Dependencies
+Inside the main directory do
+
+	pip install -r "requirements.txt"
+
+
 # Running the project
 1. Change directory to front_end/
 2. Run app.py with "python3 app.py"
@@ -12,9 +18,12 @@ The "/search_engine/new_sample/\_docs_cleaned" and "/search_engine/new_sample/\_
 
 A "/search_engine/new_sample/url\_map.dat" file must exist, where the file is a pickled dictionary that maps a URL to it's corresponding file name in "/search_engine/new_sample/\_docs\_cleaned" and "/search_engine/new_sample/\_docs_raw".
 
-There must be a pickled Pandas DataFrame in "./new_sample/adjacency_matrix.dat", where the rows and columns are list of URLs. The data stored is the total number of URL links from the row URL to the column URL.
+There must be a pickled Pandas DataFrame in "./new_sample/adjacency_matrix.dat", where the rows and columns are list of URLs. The data stored is the total number of URL links from the row URL to the column URL. If you decide to crawl again using crawler.py, you must do the following inside the "/search_engine/new_sample" directory.
 
-Ex.
+	python3 ../../crawler/build_adj_matrix.py -d
+	python3 ../../crawler/build_adj_matrix.py -m
+
+Ex matrix.
 ,	url1,	url2,	url3  
 url1,	2,	0,	1  
 url2,	0,	3,	1  
