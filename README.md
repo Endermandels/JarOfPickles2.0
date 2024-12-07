@@ -1,14 +1,24 @@
 # JarOfPickles
 
-# Building page_rank.py
+# Running the project
+1. Change directory to front_end/
+2. Run app.py with "python3 app.py"
+3. Wait until a URL appears in the terminal (Ex. http://127.0.0.1:5000)
+4. Copy and paste the URL into a web browser, and allow it to load
 
-There must be a adjacency matrix csv file in "./sample/adjacency_matrix.csv", where the first line is the list of URLs with the first value being empty. Subsequent lines must start with the URL then 0s and 1s.
 
-Ex.
-,	url1,	url2,	url3  
-url1,	1,	0,	1  
-url2,	0,	1,	1  
-url3,	0,	0,	1  
+# Running app.py (front end)
+
+You must be inside the front_end directory for it to work with the default hard-coded directories.
+
+python3 app.py
+
+
+# Running anime_search_engine.py
+
+You must be inside the search_engine directory for it to work with the default hard-coded directories.
+
+python3 anime_search_engine.py
 
 
 # Running page_rank.py
@@ -17,44 +27,76 @@ python3 page_rank.py
 
 Using the above command will create a pickle file, named "page_rank.dat", that stores a dictionary mapping URLs to their PageRank score.
 
-#Running word_2_vec_model.py
+
+# Running word_2_vec_model.py
 
 python3 word_2_vec_model.py
 
 The above command will create the necessary word2vec models to use for related results in anime_search_engine.py.
 
+
+# Building page_rank.py
+
+There must be a pickled Pandas DataFrame in "./sample/adjacency_matrix.dat", where the rows and columns are list of URLs. The data stored is the total number of URL links from the row URL to the column URL.
+
+Ex.
+,	url1,	url2,	url3  
+url1,	2,	0,	1  
+url2,	0,	3,	1  
+url3,	0,	0,	1  
+
+
+
 # Building anime_search_engine.py
 
-If the indexdir directory doesn't exist, multiple files must exist to create the index. The "./sample/\_docs_cleaned" and "./sample/\_docs_raw" directories must have a set of regular text and HTML text, respectively. The file in one directory must correspond to the other directory by having the same file names.
+In the search_engine directory these directories/files must exist:
+- indexdir/
+- page_rank.dat
+- synonyms.json
+- titles.json
+- word2vec.model
 
-A "./sample/url\_map.dat" file must exist, where the file is a pickled dictionary that maps a URL to it's corresponding file name in "./sample/\_docs\_cleaned" and "./sample/\_docs_raw".
+If the indexdir directory doesn't exist in the search_engine directory, multiple files must exist to automatically create the index. The "/search_engine/sample/\_docs_cleaned" and "/search_engine/sample/\_docs_raw" directories must have a set of regular text and HTML text, respectively. The file in one directory must correspond to the other directory by having the same file names.
 
-Create a new search engine with SearchEngine()
+A "/search_engine/sample/url\_map.dat" file must exist, where the file is a pickled dictionary that maps a URL to it's corresponding file name in "/search_engine/sample/\_docs\_cleaned" and "/search_engine/sample/\_docs_raw".
 
-Submit a query with SearchEngine.submit_query("some_string")
 
-Print the result for the query with  
-	SearchEngine.print_page(page_num)  
-	SearchEngine.print_first_page()  
-	SearchEngine.print_next_page()  
-	SearchEngine.print_prev_page()  
+A "titles.json" and "synonyms.json" file must exist in the "/search_engine/startup_files" directory. If the "/search_engine/sample" directory is correct, then these files can be built by running "python3 get_titles.py" in the "startup_files" directory.
 
-You must close the searcher after with SearchEngine.close_searcher()
+
+You can create a search engine with SearchEngine()
+
+If directories/files have been changed, then you must alter the following parameters to indicate where they are located.
+
+index_dir,
+url_map_file,
+docs_raw_dir,
+docs_cleaned_dir,
+page_rank_file,
+titles_json,
+synonyms_json, 
+word_2_vec_model
+
+Submit a query with:
+
+	SearchEngine.submit_query("some_string")
+
+You can optionally set upgrade and relev_results to True or False. Upgrade enables autocomplete, relev_results enables the related results features.
+
+You can get back the results for a page with:
+
+	SearchEngine.return_page(page_num)
+
+You can print the results with:
+
+	SearchEngine.print_page(returned_page)
+
+You must close the searcher when finished with the search engine with:
+
+	SearchEngine.close_searcher()
 
 Ex.  
 	string = "tokyo"  
-	mySearchEngine = SearchEngine()  
-	mySearchEngine.submit_query(string)  
-	mySearchEngine.print_first_page()  
-	mySearchEngine.print_next_page()  
-	mySearchEngine.close_searcher()  
-
-
-# Running anime_search_engine.py
-
-python3 anime_search_engine.py
-
-
-# Running app.py (front end)
-
-python3 app.py
+	mySearchEngine = SearchEngine() 
+	mySearchEngine.submit_query(string, upgrade=True)
+	mySearchEngine.print_page(mySearchEngine.return_page(1))
